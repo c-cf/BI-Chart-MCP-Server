@@ -1,86 +1,63 @@
-# Data BI MCP Server
+# BI Chart MCP Server
 
-A Model Context Protocol (MCP) server that transforms data into high-quality Business Intelligence (BI) charts. This server enables AI assistants to connect to various data sources, perform data transformations, and generate visualizations through natural language requests.
+This project implements the BI Chart MCP Server using Python. Previously, the functionality was prototyped with TypeScript, but the current and maintained version is built with Python.
 
-## What is MCP?
+## Project Structure
 
-The Model Context Protocol (MCP) is an open standard that enables secure, two-way connections between AI models and external systems. This server implements MCP to allow AI assistants like Claude to interact with your data and generate visualizations.
-
-## Features
-
-- **Data Source Connections**: Connect to databases (PostgreSQL, MySQL, SQLite) and files (CSV, Excel, JSON)
-- **Data Transformation**: Filter, aggregate, join, and sort data
-- **BI Visualizations**: Generate bar charts, line charts, pie charts, and scatter plots
-- **MCP Compatibility**: Works with any MCP-compatible AI assistant
+- **mcp_bi_visualizer/**: Contains the main server code and modules.
+  - `server.py`: Main entry point for starting the MCP server.
+  - **data/**: Data loading and processing modules.
+    - `loader.py`
+    - `processor.py`
+  - **resources/**: Modules to manage project resources.
+    - `manager.py`
+    - `memo.py`
+  - **visualization/**: Visualization components.
+    - `renderer.py`
+    - `vega_lite.py`
+- **scripts/**
+  - `run_server.py`: A script to launch the server.
+- **tests/**: Unit tests for the server and visualization components.
+- Other files include configuration files (e.g., `pyproject.toml`, `requirements.txt`, `setup.py`) and documentation.
 
 ## Installation
 
-``` Bash
-Clone the repository
-git clone https://github.com/yourusername/data-bi-mcp-server.git
-cd data-bi-mcp-server
+1. Clone the repository.
+2. Create a virtual environment and activate it:
+   ```
+   python -m venv .venv
+   .venv\Scripts\activate   # On Windows
+   ```
+3. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+## Running the Server
+
+You can run the server using the provided script:
+
+```
+python scripts/run_server.py
 ```
 
-### Install dependencies
-``` Bash
-npm install
+Alternatively, you can start the server directly from the module:
+
 ```
-### Build the project
-``` Bash
-npm run build
+python -m mcp_bi_visualizer.server
 ```
 
+## Testing
 
-## Usage
+Run the tests using your preferred test runner. For example, with pytest:
 
-### Starting the Server
-
-``` Bash
-npm start
+```
+pytest
 ```
 
+## Notes
 
-The server will start on port 9000 by default. You can configure the port by setting the `PORT` environment variable.
+- The project has been migrated from a TypeScript-based implementation to Python.
+- For any issues or contributions, please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) file.
 
-### Connecting from an MCP-Compatible AI Assistant
-
-To connect to the server from an MCP-enabled AI assistant (like Claude Desktop), use:
-
-- **Protocol**: HTTP+SSE
-- **Endpoint**: `http://localhost:9000`
-
-### Example Interactions
-
-Once connected, you can use natural language to:
-
-- "Connect to my PostgreSQL database at localhost:5432"
-- "Load the sales data from the CSV file at /data/sales.csv"
-- "Filter the data to show only transactions over $1000"
-- "Create a bar chart showing monthly sales by region"
-- "Generate a pie chart showing product category distribution"
-
-## Development
-
-### Project Structure
-
-- `src/connectors/`: Data source connection modules
-- `src/transformers/`: Data transformation modules
-- `src/visualizers/`: Chart generation modules
-- `src/mcp/`: Model Context Protocol implementation
-
-### Adding New Features
-
-The modular architecture makes it easy to extend the server with new capabilities:
-
-- **New Data Sources**: Add a new connector in `src/connectors/`
-- **New Transformations**: Add a new transformer in `src/transformers/`
-- **New Visualizations**: Add a new visualizer in `src/visualizers/`
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
+Enjoy using the BI Chart MCP Server!
