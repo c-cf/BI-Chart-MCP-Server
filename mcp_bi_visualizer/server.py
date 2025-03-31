@@ -12,6 +12,7 @@ from .data.processor import DataProcessor
 from .visualization.vega_lite import VegaLiteGenerator
 from .visualization.renderer import VisualizationRenderer
 from .resources.manager import ResourceManager
+from .resources.memo import MemoResourceManager  # Import MemoResourceManager
 
 class BiVisualizerServer:
     """
@@ -31,16 +32,18 @@ class BiVisualizerServer:
         self.vega_generator = VegaLiteGenerator()
         self.renderer = VisualizationRenderer()
         self.resource_manager = ResourceManager()
+        self.memo_manager = MemoResourceManager()  # Initialize MemoResourceManager
         
         # Register MCP handlers
         self.register_tools()
         self.register_resources()
         self.register_prompts()
+        self.register_memo_tools()  # Register Memo tools
     
     def register_tools(self):
         """Register all MCP tools."""
         
-        @self.app.tool("load_data")
+        @self.app.tool()
         async def load_data(source: str, format: str = "auto") -> Dict[str, Any]:
             """
             Load data from the specified source.
@@ -62,7 +65,7 @@ class BiVisualizerServer:
                 "preview": preview
             }
         
-        @self.app.tool("create_visualization")
+        @self.app.tool()
         async def create_visualization(
             data_source: str,
             chart_type: str,
@@ -110,7 +113,7 @@ class BiVisualizerServer:
                 "spec": vega_spec
             }
         
-        @self.app.tool("add_insight")
+        @self.app.tool()
         async def add_insight(visualization_uri: str, insight: str) -> Dict[str, Any]:
             """
             Add a business insight about a visualization to the memo.
@@ -253,6 +256,75 @@ class BiVisualizerServer:
                 )
             
             raise ValueError(f"Unknown prompt: {name}")
+    
+    def register_memo_tools(self):
+        """Register Memo-related MCP tools."""
+        
+        @self.app.tool()
+        async def create_memo(content: str) -> Dict[str, Any]:
+            """
+            Create a new memo.
+            
+            Args:
+                content: The content of the memo
+                
+            Returns:
+                Dictionary with the memo ID
+            """
+            memo_id = self.memo_manager.create_memo(content)
+            return {
+                "success": True,
+                "memo_id": memo_id
+            }
+        
+        @self.app.tool()
+        async def get_memo(memo_id: str) -> Dict[str, Any]:
+            """
+            Get a memo by ID.
+            
+            Args:
+                memo_id: The ID of the memo
+                
+            Returns:
+                Dictionary with the memo content
+            """
+            content = self.memo_manager.get_memo(memo_id)
+            if content is None:
+                return {
+                    "success": False,
+                    "message": "Memo not found"
+                }
+            return {
+                "success": True,
+                "content": content
+            }
+        
+        @self.app.tool()
+        async def list_memos() -> List[Dict[str, Any]]:
+            """
+            List all memos.
+            
+            Returns:
+                List of memos with their IDs and content
+            """
+            return self.memo_manager.list_memos()
+        
+        @self.app.tool()
+        async def delete_memo(memo_id: str) -> Dict[str, Any]:
+            """
+            Delete a memo by ID.
+            
+            Args:
+                memo_id: The ID of the memo
+                
+            Returns:
+                Dictionary with success status
+            """
+            success = self.memo_manager.delete_memo(memo_id)
+            return {
+                "success": success,
+                "message": "Memo deleted" if success else "Memo not found"
+            }
     
     async def run(self):
         """Run the MCP server."""
