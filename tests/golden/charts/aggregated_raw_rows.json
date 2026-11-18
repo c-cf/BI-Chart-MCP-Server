@@ -1,0 +1,54 @@
+{
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+    "data": {
+      "name": "table"
+    },
+    "width": "container",
+    "height": 320,
+    "autosize": {
+      "type": "fit",
+      "contains": "padding"
+    },
+    "mark": {
+      "type": "bar",
+      "tooltip": true
+    },
+    "encoding": {
+      "x": {
+        "field": "region",
+        "type": "nominal",
+        "title": "region",
+        "sort": "ascending"
+      },
+      "y": {
+        "field": "revenue",
+        "type": "quantitative",
+        "title": "mean(revenue)",
+        "aggregate": "mean"
+      }
+    }
+  },
+  "data": [
+    {
+      "month": "2026-01-01",
+      "region": "North",
+      "revenue": 10.5
+    },
+    {
+      "month": "2026-02-01",
+      "region": "North",
+      "revenue": 12.0
+    },
+    {
+      "month": "2026-01-01",
+      "region": "South",
+      "revenue": 7.25
+    },
+    {
+      "month": "2026-02-01",
+      "region": "South",
+      "revenue": 9.0
+    }
+  ]
+}

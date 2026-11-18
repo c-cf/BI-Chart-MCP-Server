@@ -1,0 +1,32 @@
+{
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+    "data": {
+      "name": "table"
+    },
+    "width": "container",
+    "height": 120,
+    "autosize": {
+      "type": "fit",
+      "contains": "padding"
+    },
+    "mark": {
+      "type": "text",
+      "fontSize": 48,
+      "fontWeight": "bold"
+    },
+    "encoding": {
+      "text": {
+        "field": "total",
+        "type": "quantitative",
+        "format": ",~r"
+      }
+    },
+    "title": "Total revenue"
+  },
+  "data": [
+    {
+      "total": 12345.678
+    }
+  ]
+}

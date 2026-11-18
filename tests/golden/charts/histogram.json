@@ -1,0 +1,45 @@
+{
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+    "data": {
+      "name": "table"
+    },
+    "width": "container",
+    "height": 320,
+    "autosize": {
+      "type": "fit",
+      "contains": "padding"
+    },
+    "mark": {
+      "type": "bar",
+      "tooltip": true
+    },
+    "encoding": {
+      "x": {
+        "field": "amount",
+        "type": "quantitative",
+        "title": "amount",
+        "bin": true
+      },
+      "y": {
+        "aggregate": "count",
+        "type": "quantitative",
+        "title": "count"
+      }
+    }
+  },
+  "data": [
+    {
+      "amount": 1.0
+    },
+    {
+      "amount": 2.0
+    },
+    {
+      "amount": 2.5
+    },
+    {
+      "amount": 9.0
+    }
+  ]
+}
