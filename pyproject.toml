@@ -1,14 +1,89 @@
 [project]
-name = "bi-chart-mcp-server"
-version = "0.1.0"
-description = "Add your description here"
+name = "bi-chart-mcp"
+version = "0.2.0.dev0"
+description = "MCP server for safe, read-only BI on PostgreSQL and DuckDB, with interactive Vega-Lite charts rendered via MCP Apps."
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
-dependencies = [
-    "httpx>=0.28.1",
-    "mcp[cli]>=1.4.0",
-    "numpy>=2.2.3",
-    "pandas>=2.2.3",
-    "pytest>=8.3.5",
-    "sqlalchemy>=2.0.39",
+keywords = ["mcp", "bi", "postgres", "duckdb", "vega-lite", "text-to-sql", "mcp-apps"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Visualization",
 ]
+dependencies = [
+    "mcp>=2.3,<3",
+    "psycopg[binary,pool]>=3.2,<4",
+    "duckdb>=2.0,<3",
+    "sqlglot>=30,<31",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "pyyaml>=6.0,<7",
+    "anyio>=4.6,<5",
+]
+
+[project.scripts]
+bi-chart-mcp = "bi_chart_mcp.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/c-cf/BI-Chart-MCP-Server"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "pyright>=1.1.390",
+    "testcontainers[postgres]>=4.9",
+    "types-pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bi_chart_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "B", "UP", "SIM", "S", "RUF", "ASYNC", "PT", "N", "C4", "PIE", "RET", "TID",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S608"]
+"examples/**" = ["S608"]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+strict = ["src"]
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -m 'not integration'"
+markers = [
+    "integration: needs Docker (testcontainers Postgres); run with `pytest -m integration`",
+]
+
+[tool.coverage.run]
+source = ["bi_chart_mcp"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "\\.\\.\\."]
