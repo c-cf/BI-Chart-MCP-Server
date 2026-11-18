@@ -43,6 +43,9 @@ def configure_logging(level: str = "INFO") -> None:
     logger.handlers = [handler]
     logger.setLevel(level)
     logger.propagate = False
+    # sqlglot warns when it falls back to an opaque Command (e.g. EXPLAIN); the guard
+    # rejects those anyway, so the warning is noise on stderr.
+    logging.getLogger("sqlglot").setLevel(logging.ERROR)
 
 
 def get_logger(name: str) -> logging.Logger:

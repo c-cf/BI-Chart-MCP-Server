@@ -74,6 +74,7 @@ venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = "-ra --strict-markers -m 'not integration'"
 markers = [
     "integration: needs Docker (testcontainers Postgres); run with `pytest -m integration`",

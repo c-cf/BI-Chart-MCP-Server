@@ -1,0 +1,139 @@
+# SQL guard corpus for the DuckDB dialect.
+# Tests run with allowed tables {orders, customers}: DuckDB sources only expose
+# views registered from configured files, so every other table reference is denied.
+
+allow:
+  - id: literal
+    sql: SELECT 1
+  - id: aggregate
+    sql: SELECT status, count(*) AS n FROM orders GROUP BY ALL ORDER BY n DESC
+  - id: from_first
+    sql: FROM orders SELECT id, amount WHERE amount > 10
+  - id: main_qualified
+    sql: SELECT * FROM main.orders
+  - id: join
+    sql: SELECT c.name, sum(o.amount) FROM orders o JOIN customers c ON c.id = o.customer_id GROUP BY 1
+  - id: cte_shadowing_name
+    sql: WITH monthly AS (SELECT date_trunc('month', created_at) AS m, sum(amount) AS total FROM orders GROUP BY 1) SELECT * FROM monthly
+  - id: union
+    sql: SELECT id FROM orders UNION SELECT id FROM customers
+  - id: window
+    sql: SELECT id, row_number() OVER (ORDER BY amount DESC) FROM orders
+  - id: range_table_function
+    sql: SELECT * FROM range(10)
+  - id: strftime
+    sql: SELECT strftime(created_at, '%Y-%m') AS ym, count(*) FROM orders GROUP BY ym
+
+deny:
+  - id: empty
+    sql: ""
+    code: empty
+
+  # --- file and catalog access ---
+  - id: replacement_scan_csv
+    sql: SELECT * FROM 'secrets.csv'
+    code: forbidden_table
+  - id: replacement_scan_parquet
+    sql: FROM '/etc/passwd'
+    code: forbidden_table
+  - id: unlisted_table
+    sql: SELECT * FROM payroll
+    code: forbidden_table
+  - id: information_schema
+    sql: SELECT * FROM information_schema.tables
+    code: forbidden_table
+  - id: pragma_table_function
+    sql: SELECT * FROM pragma_database_list
+    code: forbidden_table
+  - id: other_catalog
+    sql: SELECT * FROM other_db.main.orders
+    code: forbidden_table
+  - id: read_csv
+    sql: SELECT * FROM read_csv('secrets.csv')
+    code: forbidden_function
+  - id: read_csv_auto
+    sql: SELECT * FROM read_csv_auto('secrets.csv')
+    code: forbidden_function
+  - id: read_parquet
+    sql: SELECT * FROM read_parquet('s3://bucket/x.parquet')
+    code: forbidden_function
+  - id: read_text
+    sql: SELECT * FROM read_text('/etc/passwd')
+    code: forbidden_function
+  - id: read_json
+    sql: SELECT * FROM read_json('x.json')
+    code: forbidden_function
+  - id: parquet_metadata
+    sql: SELECT * FROM parquet_metadata('x.parquet')
+    code: forbidden_function
+  - id: glob
+    sql: SELECT * FROM glob('*')
+    code: forbidden_function
+  - id: query_table
+    sql: SELECT * FROM query_table('payroll')
+    code: forbidden_function
+  - id: query_function
+    sql: SELECT * FROM query('SELECT * FROM payroll')
+    code: forbidden_function
+  - id: getenv
+    sql: SELECT getenv('HOME')
+    code: forbidden_function
+  - id: current_setting
+    sql: SELECT current_setting('allowed_paths')
+    code: forbidden_function
+  - id: duckdb_settings
+    sql: SELECT * FROM duckdb_settings()
+    code: forbidden_function
+  - id: duckdb_secrets
+    sql: SELECT * FROM duckdb_secrets()
+    code: forbidden_function
+  - id: sniff_csv
+    sql: SELECT * FROM sniff_csv('x.csv')
+    code: forbidden_function
+  - id: function_in_subquery
+    sql: SELECT * FROM orders WHERE id IN (SELECT 1 FROM read_csv('x.csv'))
+    code: forbidden_function
+
+  # --- statements ---
+  - id: attach
+    sql: ATTACH 'other.duckdb' AS other
+    code: not_a_query
+  - id: detach
+    sql: DETACH other
+    code: not_a_query
+  - id: install
+    sql: INSTALL httpfs
+    code: not_a_query
+  - id: load
+    sql: LOAD httpfs
+    code: not_a_query
+  - id: copy_out
+    sql: COPY (SELECT * FROM orders) TO 'orders.csv'
+    code: not_a_query
+  - id: export_database
+    sql: EXPORT DATABASE 'dump'
+    code: parse_error  # sqlglot cannot parse EXPORT DATABASE; rejected either way
+  - id: set
+    sql: SET enable_external_access = true
+    code: not_a_query
+  - id: pragma
+    sql: PRAGMA enable_profiling
+    code: not_a_query
+  - id: call
+    sql: CALL duckdb_settings()
+    code: not_a_query
+  - id: use
+    sql: USE other
+    code: not_a_query
+  - id: create_secret
+    sql: CREATE SECRET (TYPE s3, KEY_ID 'x', SECRET 'y')
+    code: parse_error  # sqlglot cannot parse CREATE SECRET; rejected either way
+  - id: create_view
+    sql: CREATE VIEW v AS SELECT * FROM read_csv('x.csv')
+    code: not_a_query
+  - id: summarize
+    sql: SUMMARIZE orders
+    code: not_a_query
+  - id: stacked
+    sql: SELECT 1; ATTACH 'x.duckdb'
+    code: multiple_statements

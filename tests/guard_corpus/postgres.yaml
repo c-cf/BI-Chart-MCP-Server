@@ -1,0 +1,249 @@
+# SQL guard corpus for the PostgreSQL dialect.
+# `allow` cases must pass the guard; `deny` cases must be rejected with `code`.
+# The integration suite replays `deny` cases against a real database with the guard
+# disabled, to record which layer (guard or database) actually stops each one.
+
+allow:
+  - id: literal
+    sql: SELECT 1
+  - id: aggregate_with_group
+    sql: SELECT status, count(*) AS n FROM orders GROUP BY status ORDER BY n DESC
+  - id: schema_qualified
+    sql: SELECT o.id FROM analytics.orders AS o
+  - id: cte
+    sql: WITH recent AS (SELECT * FROM orders WHERE created_at > now() - interval '30 days') SELECT count(*) FROM recent
+  - id: union_all
+    sql: SELECT id FROM orders UNION ALL SELECT id FROM refunds
+  - id: window_function
+    sql: SELECT id, sum(amount) OVER (PARTITION BY customer_id ORDER BY created_at) FROM orders
+  - id: filter_clause
+    sql: SELECT count(*) FILTER (WHERE status = 'paid') FROM orders
+  - id: lateral_subquery
+    sql: SELECT c.id, x.total FROM customers c, LATERAL (SELECT sum(amount) AS total FROM orders o WHERE o.customer_id = c.id) x
+  - id: generate_series
+    sql: SELECT d::date FROM generate_series('2026-01-01'::date, '2026-01-31'::date, interval '1 day') AS d
+  - id: date_trunc
+    sql: SELECT date_trunc('month', created_at) AS month, sum(amount) FROM orders GROUP BY 1 ORDER BY 1
+  - id: table_shorthand
+    sql: TABLE orders
+  - id: parenthesized
+    sql: (SELECT 1)
+  - id: dollar_quoted_string
+    sql: SELECT $$it's fine$$ AS s
+  - id: backslash_literal
+    sql: SELECT * FROM products WHERE sku LIKE 'A\_%'
+  - id: fetch_first
+    sql: SELECT * FROM orders ORDER BY id FETCH FIRST 5 ROWS ONLY
+  - id: harmless_pg_function
+    sql: SELECT pg_typeof(amount), pg_size_pretty(1024::bigint) FROM orders
+  - id: exists_subquery
+    sql: SELECT * FROM customers c WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id)
+  - id: comments
+    sql: |
+      -- monthly revenue
+      SELECT /* inline */ sum(amount) FROM orders
+
+deny:
+  # --- empty / malformed ---
+  - id: empty
+    sql: ""
+    code: empty
+  - id: whitespace_only
+    sql: "   \n  "
+    code: empty
+  - id: comment_only
+    sql: "-- nothing here"
+    code: empty
+  - id: unicode_escaped_identifier
+    sql: SELECT * FROM U&"\0070g_settings"
+    code: parse_error
+  - id: garbage
+    sql: SELEC * FRM orders
+    code: parse_error
+
+  # --- statements that are not queries ---
+  - id: delete
+    sql: DELETE FROM orders
+    code: not_a_query
+  - id: update
+    sql: UPDATE orders SET amount = 0
+    code: not_a_query
+  - id: insert
+    sql: INSERT INTO orders (id) VALUES (1)
+    code: not_a_query
+  - id: drop_table
+    sql: DROP TABLE orders
+    code: not_a_query
+  - id: truncate
+    sql: TRUNCATE orders
+    code: not_a_query
+  - id: create_table
+    sql: CREATE TABLE x (id int)
+    code: not_a_query
+  - id: create_table_as
+    sql: CREATE TABLE x AS SELECT * FROM orders
+    code: not_a_query
+  - id: alter_role
+    sql: ALTER ROLE bi_reader SET statement_timeout = 0
+    code: not_a_query
+  - id: grant
+    sql: GRANT ALL ON orders TO public
+    code: not_a_query
+  - id: copy_to_stdout
+    sql: COPY orders TO STDOUT
+    code: not_a_query
+  - id: copy_to_program
+    sql: COPY (SELECT 1) TO PROGRAM 'id'
+    code: not_a_query
+  - id: set_guc
+    sql: SET statement_timeout = 0
+    code: not_a_query
+  - id: reset_all
+    sql: RESET ALL
+    code: not_a_query
+  - id: begin
+    sql: BEGIN
+    code: not_a_query
+  - id: vacuum
+    sql: VACUUM orders
+    code: not_a_query
+  - id: explain_analyze
+    sql: EXPLAIN ANALYZE DELETE FROM orders
+    code: not_a_query
+  - id: do_block
+    sql: DO $$ BEGIN DELETE FROM orders; END $$
+    code: not_a_query
+  - id: call_procedure
+    sql: CALL purge_orders()
+    code: not_a_query
+  - id: notify
+    sql: NOTIFY channel, 'x'
+    code: parse_error  # sqlglot cannot parse NOTIFY; rejected either way
+  - id: lock_table
+    sql: LOCK TABLE orders IN ACCESS EXCLUSIVE MODE
+    code: not_a_query
+  - id: values_root
+    sql: VALUES (1)
+    code: not_a_query
+
+  # --- multiple statements ---
+  - id: stacked_drop
+    sql: SELECT 1; DROP TABLE orders
+    code: multiple_statements
+  - id: stacked_selects
+    sql: SELECT 1; SELECT 2
+    code: multiple_statements
+
+  # --- write paths hidden inside a query ---
+  - id: data_modifying_cte_delete
+    sql: WITH d AS (DELETE FROM orders RETURNING *) SELECT * FROM d
+    code: forbidden_clause
+  - id: data_modifying_cte_insert
+    sql: WITH i AS (INSERT INTO orders (id) VALUES (1) RETURNING id) SELECT * FROM i
+    code: forbidden_clause
+  - id: data_modifying_cte_update
+    sql: WITH u AS (UPDATE orders SET amount = 0 RETURNING id) SELECT count(*) FROM u
+    code: forbidden_clause
+  - id: select_into
+    sql: SELECT * INTO stolen FROM orders
+    code: forbidden_clause
+  - id: for_update
+    sql: SELECT * FROM orders FOR UPDATE
+    code: forbidden_clause
+  - id: for_share
+    sql: SELECT * FROM orders FOR SHARE
+    code: forbidden_clause
+
+  # --- dangerous functions, including obfuscated spellings and hiding places ---
+  - id: pg_sleep
+    sql: SELECT pg_sleep(10)
+    code: forbidden_function
+  - id: pg_sleep_upper
+    sql: SELECT PG_SLEEP(10)
+    code: forbidden_function
+  - id: pg_sleep_quoted
+    sql: SELECT "pg_sleep"(10)
+    code: forbidden_function
+  - id: pg_sleep_schema_qualified
+    sql: SELECT pg_catalog.pg_sleep(10)
+    code: forbidden_function
+  - id: pg_sleep_in_filter
+    sql: SELECT count(*) FILTER (WHERE pg_sleep(10) IS NULL) FROM orders
+    code: forbidden_function
+  - id: pg_sleep_in_order_by
+    sql: SELECT id FROM orders ORDER BY pg_sleep(1)
+    code: forbidden_function
+  - id: pg_sleep_in_cte
+    sql: WITH s AS (SELECT pg_sleep(10)) SELECT * FROM s
+    code: forbidden_function
+  - id: pg_sleep_in_where_subquery
+    sql: SELECT * FROM orders WHERE id IN (SELECT 1 FROM pg_sleep(10))
+    code: forbidden_function
+  - id: pg_read_file
+    sql: SELECT pg_read_file('/etc/passwd')
+    code: forbidden_function
+  - id: pg_ls_dir
+    sql: SELECT * FROM pg_ls_dir('.')
+    code: forbidden_function
+  - id: dblink_lateral
+    sql: SELECT * FROM orders o, LATERAL dblink('host=evil', 'DELETE FROM orders') AS r(x text)
+    code: forbidden_function
+  - id: lo_import
+    sql: SELECT lo_import('/etc/passwd')
+    code: forbidden_function
+  - id: lo_export
+    sql: SELECT lo_export(12345, '/tmp/x')
+    code: forbidden_function
+  - id: lowrite
+    sql: SELECT lowrite(0, 'x')
+    code: forbidden_function
+  - id: set_config
+    sql: SELECT set_config('statement_timeout', '0', false)
+    code: forbidden_function
+  - id: current_setting
+    sql: SELECT current_setting('data_directory')
+    code: forbidden_function
+  - id: nextval
+    sql: SELECT nextval('orders_id_seq')
+    code: forbidden_function
+  - id: setval
+    sql: SELECT setval('orders_id_seq', 1)
+    code: forbidden_function
+  - id: txid_current
+    sql: SELECT txid_current()
+    code: forbidden_function
+  - id: query_to_xml
+    sql: SELECT query_to_xml('DELETE FROM orders RETURNING *', true, true, '')
+    code: forbidden_function
+  - id: table_to_xml
+    sql: SELECT table_to_xml('orders', true, true, '')
+    code: forbidden_function
+  - id: ts_stat
+    sql: SELECT * FROM ts_stat('DELETE FROM orders')
+    code: forbidden_function
+  - id: advisory_lock
+    sql: SELECT pg_advisory_lock(1)
+    code: forbidden_function
+  - id: terminate_backend
+    sql: SELECT pg_terminate_backend(pid) FROM orders
+    code: forbidden_function
+  - id: pg_notify
+    sql: SELECT pg_notify('channel', 'x')
+    code: forbidden_function
+
+  # --- system catalogs ---
+  - id: pg_catalog_authid
+    sql: SELECT * FROM pg_catalog.pg_authid
+    code: forbidden_table
+  - id: pg_settings_unqualified
+    sql: SELECT name, setting FROM pg_settings
+    code: forbidden_table
+  - id: pg_shadow
+    sql: SELECT * FROM pg_shadow
+    code: forbidden_table
+  - id: information_schema
+    sql: SELECT * FROM information_schema.tables
+    code: forbidden_table
+  - id: schema_outside_allowlist
+    sql: SELECT * FROM hr.salaries
+    code: forbidden_table
