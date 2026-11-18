@@ -13,11 +13,11 @@ from mcp.types import CallToolResult, TextContent
 from pydantic import BaseModel, Field, JsonValue
 
 from bi_chart_mcp.charts.compile import compile_chart
+from bi_chart_mcp.charts.digest import chart_digest
 from bi_chart_mcp.charts.intent import ChartIntent
 from bi_chart_mcp.charts.recommend import complete_intent, profile_fields
 from bi_chart_mcp.errors import ConfigError
 from bi_chart_mcp.query.handles import QueryRecord
-from bi_chart_mcp.query.table_text import markdown_table
 from bi_chart_mcp.query.values import ColumnKind, column_kind, to_json_value
 from bi_chart_mcp.services import Services
 from bi_chart_mcp.settings import Limits
@@ -154,13 +154,17 @@ def chart_text(payload: ChartPayload, *, rendered: bool, limits: Limits) -> str:
         "This client cannot display interactive charts, so the data follows."
     )
     lines = [head, *payload.notes]
-    names = [c.name for c in payload.columns]
-    preview = min(limits.preview_rows, payload.chart_rows)
-    if names and preview:
-        table_rows = [[payload.data[n][i] for n in names] for i in range(preview)]
-        lines += [UNTRUSTED_NOTE, "", markdown_table(names, table_rows)]
-        if preview < payload.chart_rows:
-            lines.append(f"(first {preview} of {payload.chart_rows} charted rows)")
+    if payload.chart_rows:
+        # The whole chart in compact form (pivoted or summarised), not just its first rows:
+        # the model must see what the user sees, e.g. a spike late in a series.
+        kinds: dict[str, ColumnKind] = {c.name: c.kind for c in payload.columns}
+        digest = chart_digest(payload.chart, kinds, payload.data, max_rows=limits.preview_rows)
+        scope = (
+            "all rows"
+            if payload.chart_rows == payload.row_count
+            else f"the {payload.chart_rows} charted rows"
+        )
+        lines += [f"Chart data ({scope}, aggregated as drawn):", UNTRUSTED_NOTE, "", digest]
     return "\n".join(lines)
 
 

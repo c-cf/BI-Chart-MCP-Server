@@ -63,5 +63,8 @@ def test_chart_text_previews_rows_for_the_model() -> None:
     payload = build_payload(_record([("a", 1), ("b", 2)]), ChartIntent(), Limits(preview_rows=1))
     text = chart_text(payload, rendered=True, limits=Limits(preview_rows=1))
     assert text.startswith("Showed the user an interactive chart")
+    assert "Chart data (all rows, aggregated as drawn):" in text
     assert "| label | value |" in text
-    assert "(first 1 of 2 charted rows)" in text
+    # preview_rows is a budget for the digest, never a reason to hide charted rows.
+    assert "| b | 2 |" in text
+    assert "| a | 1 |" in text
