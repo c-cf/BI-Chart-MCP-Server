@@ -129,4 +129,11 @@ app.ontoolresult = (result) => {
 };
 app.onhostcontextchanged = (context) => applyContext(context);
 
-void app.connect().then(() => applyContext(app.getHostContext()));
+app
+  .connect()
+  .then(() => applyContext(app.getHostContext()))
+  .catch((error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    ui.summary.textContent = "Could not connect to the host";
+    showError(`This chart view could not start (${reason}).`);
+  });

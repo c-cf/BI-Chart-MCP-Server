@@ -39,6 +39,9 @@ deny:
   - id: unlisted_table
     sql: SELECT * FROM payroll
     code: forbidden_table
+  - id: cte_name_leaking_out_of_subquery
+    sql: SELECT * FROM (WITH payroll AS (SELECT 1) FROM payroll) a, payroll
+    code: forbidden_table
   - id: information_schema
     sql: SELECT * FROM information_schema.tables
     code: forbidden_table

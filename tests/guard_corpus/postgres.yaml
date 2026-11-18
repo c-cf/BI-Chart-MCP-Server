@@ -38,6 +38,12 @@ allow:
     sql: SELECT pg_typeof(amount), pg_size_pretty(1024::bigint) FROM orders
   - id: exists_subquery
     sql: SELECT * FROM customers c WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id)
+  - id: user_table_with_pg_prefix_qualified
+    sql: SELECT * FROM analytics.pg_orders
+  - id: cte_in_scope
+    sql: SELECT * FROM (WITH r AS (SELECT 1 AS x) SELECT * FROM r) AS sub
+  - id: recursive_cte
+    sql: WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 5) SELECT * FROM n
   - id: comments
     sql: |
       -- monthly revenue
@@ -243,6 +249,15 @@ deny:
     code: forbidden_table
   - id: information_schema
     sql: SELECT * FROM information_schema.tables
+    code: forbidden_table
+  - id: cte_name_leaking_out_of_subquery
+    sql: SELECT * FROM (WITH pg_settings AS (SELECT 1) SELECT * FROM pg_settings) a, pg_settings
+    code: forbidden_table
+  - id: cte_body_reads_real_table_of_same_name
+    sql: WITH pg_settings AS (SELECT * FROM pg_settings) SELECT * FROM pg_settings
+    code: forbidden_table
+  - id: later_cte_not_visible_to_earlier
+    sql: WITH a AS (SELECT * FROM pg_stat_activity), pg_stat_activity AS (SELECT 1) SELECT * FROM a
     code: forbidden_table
   - id: schema_outside_allowlist
     sql: SELECT * FROM hr.salaries

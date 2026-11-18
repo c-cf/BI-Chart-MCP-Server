@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from typing import NoReturn
 
 import anyio
 
@@ -39,6 +40,12 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _exit_config_error(exc: ConfigError) -> NoReturn:
+    _log.error("configuration error", extra={"error": exc.message})
+    print(f"bi-chart-mcp: {exc.message}", file=sys.stderr)
+    sys.exit(EXIT_CONFIG_ERROR)
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     """Load the config, open the sources and serve over stdio."""
     args = _parse_args(argv)
@@ -47,11 +54,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         config = load_config(resolve_config_path(args.config))
         services = Services.from_config(config)
     except ConfigError as exc:
-        _log.error("configuration error", extra={"error": exc.message})
-        print(f"bi-chart-mcp: {exc.message}", file=sys.stderr)
-        sys.exit(EXIT_CONFIG_ERROR)
+        _exit_config_error(exc)
     try:
-        server = build_server(services)
+        try:
+            server = build_server(services)
+        except ConfigError as exc:
+            _exit_config_error(exc)
         _log.info(
             "starting",
             extra={

@@ -273,14 +273,47 @@ def _check_functions(root: Expr, rules: DialectRules) -> None:
 # ---------------------------------------------------------------- tables
 
 
+def _defines(ctes: list[exp.CTE], name: str) -> bool:
+    return any(cte.alias_or_name.lower() == name for cte in ctes)
+
+
+def _names_cte_in_scope(table: exp.Table, name: str) -> bool:
+    """Whether an unqualified `name` refers to a CTE visible from `table`.
+
+    A CTE is visible from the query that defines it and from that query's subqueries.
+    Inside a CTE's own body only the earlier CTEs are visible, plus itself when the WITH
+    is RECURSIVE, so `WITH t AS (SELECT * FROM t)` still reads the real table t.
+    """
+    child: Expr = table
+    node = table.parent
+    while node is not None:
+        if isinstance(node, exp.With):
+            ctes = list(node.expressions)
+            position = next((i for i, cte in enumerate(ctes) if cte is child), None)
+            if position is not None:
+                ctes = ctes[: position + (1 if node.args.get("recursive") else 0)]
+            if _defines(ctes, name):
+                return True
+        else:
+            with_ = node.args.get("with_")
+            # Coming up from the WITH itself was handled above, with the scoping rules.
+            if (
+                isinstance(with_, exp.With)
+                and with_ is not child
+                and _defines(list(with_.expressions), name)
+            ):
+                return True
+        child, node = node, node.parent
+    return False
+
+
 def _check_tables(root: Expr, policy: GuardPolicy, rules: DialectRules) -> tuple[str, ...]:
-    cte_names = {cte.alias_or_name.lower() for cte in root.find_all(exp.CTE)}
     referenced: set[str] = set()
     for table in root.find_all(exp.Table):
         if not isinstance(table.this, exp.Identifier):
             continue  # a table function such as range(10); checked by _check_functions
         name, schema, catalog = table.name.lower(), table.db.lower(), table.catalog.lower()
-        if not schema and not catalog and name in cte_names:
+        if not schema and not catalog and _names_cte_in_scope(table, name):
             continue
         _check_table(name, schema, catalog, policy, rules)
         referenced.add(f"{schema}.{name}" if schema else name)
@@ -299,8 +332,14 @@ def _check_table(
     name: str, schema: str, catalog: str, policy: GuardPolicy, rules: DialectRules
 ) -> None:
     qualified = ".".join(part for part in (catalog, schema, name) if part)
-    if schema in rules.denied_schemas or name.startswith(rules.denied_table_prefixes):
+    if schema in rules.denied_schemas:
         raise _forbidden_table(qualified, "system catalogs are not exposed")
+    # Unqualified names like pg_settings resolve to system catalogs; a user table with
+    # such a name stays reachable when qualified with its schema.
+    if not schema and name.startswith(rules.denied_table_prefixes):
+        raise _forbidden_table(
+            qualified, "system catalogs are not exposed (qualify user tables with their schema)"
+        )
     if policy.allowed_schemas is not None and schema and schema not in policy.allowed_schemas:
         raise _forbidden_table(qualified, "its schema is not configured for this source")
     if policy.allowed_tables is None:

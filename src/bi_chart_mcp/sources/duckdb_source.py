@@ -40,6 +40,8 @@ from bi_chart_mcp.sources.base import (
 
 _log = get_logger("sources.duckdb")
 
+_COLUMNS_CACHE_TTL_S: Final = 60.0
+
 _READERS: Final[dict[str, str]] = {
     ".parquet": "read_parquet",
     ".csv": "read_csv",
@@ -72,6 +74,7 @@ class DuckDBSource:
             form for t in config.tables for form in (str(t.path), t.path.as_posix())
         )
         self._lock = threading.Lock()
+        self._columns_cache: tuple[float, dict[str, tuple[ColumnInfo, ...]]] | None = None
         self._con = self._connect()
 
     # ------------------------------------------------------------ Source protocol
@@ -148,8 +151,8 @@ class DuckDBSource:
     def find_columns(self, terms: Sequence[str], limit: int) -> tuple[ColumnMatch, ...]:
         lowered = [t.lower() for t in terms if t]
         matches: list[ColumnMatch] = []
-        for name in self._tables:
-            for column in self.describe_table(name).columns:
+        for name, columns in self._all_columns().items():
+            for column in columns:
                 if any(t in column.name.lower() for t in lowered):
                     matches.append(
                         ColumnMatch(table=name, column=column.name, db_type=column.db_type)
@@ -159,6 +162,16 @@ class DuckDBSource:
     def close(self) -> None:
         with self._lock:
             self._con.close()
+
+    def _all_columns(self) -> dict[str, tuple[ColumnInfo, ...]]:
+        """Columns of every view, cached briefly: DESCRIBE re-sniffs CSV files each time."""
+        now = time.monotonic()
+        cached = self._columns_cache
+        if cached is not None and now - cached[0] < _COLUMNS_CACHE_TTL_S:
+            return cached[1]
+        columns = {name: self.describe_table(name).columns for name in self._tables}
+        self._columns_cache = (now, columns)
+        return columns
 
     # ------------------------------------------------------------ internals
 

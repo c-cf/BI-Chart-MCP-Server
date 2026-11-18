@@ -144,7 +144,7 @@ def _with_absolute_paths(config: AppConfig, base_dir: Path) -> AppConfig:
     for source in config.sources:
         if isinstance(source, DuckDBSourceConfig):
             tables = tuple(
-                table.model_copy(update={"path": (base_dir / table.path).resolve()})
+                table.model_copy(update={"path": (base_dir / table.path.expanduser()).resolve()})
                 for table in source.tables
             )
             sources.append(source.model_copy(update={"tables": tables}))

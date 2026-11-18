@@ -10,10 +10,11 @@ import anyio
 from bi_chart_mcp.errors import QueryError
 from bi_chart_mcp.logs import get_logger
 from bi_chart_mcp.query.handles import HandleStore, QueryRecord, make_handle
-from bi_chart_mcp.safety.sql_guard import guard_sql
+from bi_chart_mcp.safety.sql_guard import GuardViolation, guard_sql
 from bi_chart_mcp.sources.registry import SourceRegistry
 
 _audit = get_logger("audit")
+_AUDIT_SQL_CHARS = 2000
 
 
 def _utc_now() -> str:
@@ -36,7 +37,15 @@ class QueryService:
 
     async def run(self, source: str, sql: str) -> QueryRecord:
         src = self._registry.get(source)
-        guarded = guard_sql(sql, src.policy)
+        try:
+            guarded = guard_sql(sql, src.policy)
+        except GuardViolation as exc:
+            # Rejected SQL is the most security-relevant event; keep it in the audit log.
+            _audit.warning(
+                "query rejected",
+                extra={"source": src.name, "code": exc.code, "sql": sql[:_AUDIT_SQL_CHARS]},
+            )
+            raise
         try:
             result = await anyio.to_thread.run_sync(src.execute, guarded)
         except QueryError as exc:

@@ -35,7 +35,8 @@ class QueryRecord:
 class HandleStore:
     """Bounded LRU of recent query records. Used from the event loop thread only."""
 
-    def __init__(self, capacity: int = 64) -> None:
+    # Each record may hold up to row_cap rows; keep only the recent few a chat reuses.
+    def __init__(self, capacity: int = 16) -> None:
         if capacity < 1:
             raise ValueError("capacity must be >= 1")
         self._capacity = capacity
