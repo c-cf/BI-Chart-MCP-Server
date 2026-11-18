@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "bi-chart": {
+      "command": "C:\\Users\\YOU\\.local\\bin\\uv.exe",
+      "args": [
+        "--directory",
+        "C:\\path\\to\\BI-Chart-MCP-Server",
+        "run",
+        "bi-chart-mcp",
+        "--config",
+        "C:\\path\\to\\BI-Chart-MCP-Server\\examples\\bi-chart-mcp.duckdb.yml"
+      ]
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+    "data": {
+      "name": "table"
+    },
+    "width": "container",
+    "height": {
+      "step": 22
+    },
+    "autosize": {
+      "type": "fit-x",
+      "contains": "padding"
+    },
+    "mark": {
+      "type": "bar",
+      "tooltip": true
+    },
+    "encoding": {
+      "y": {
+        "field": "product",
+        "type": "nominal",
+        "title": "product",
+        "sort": "-x"
+      },
+      "x": {
+        "field": "units",
+        "type": "quantitative",
+        "title": "units"
+      }
+    }
+  },
+  "data": [
+    {
+      "product": "Product 0",
+      "units": 0
+    },
+    {
+      "product": "Product 1",
+      "units": 1
+    },
+    {
+      "product": "Product 2",
+      "units": 2
+    },
+    {
+      "product": "Product 3",
+      "units": 3
+    },
+    {
+      "product": "Product 4",
+      "units": 4
+    },
+    {
+      "product": "Product 5",
+      "units": 5
+    },
+    {
+      "product": "Product 6",
+      "units": 6
+    },
+    {
+      "product": "Product 7",
+      "units": 7
+    },
+    {
+      "product": "Product 8",
+      "units": 8
+    },
+    {
+      "product": "Product 9",
+      "units": 9
+    },
+    {
+      "product": "Product 10",
+      "units": 10
+    },
+    {
+      "product": "Product 11",
+      "units": 11
+    }
+  ]
+}

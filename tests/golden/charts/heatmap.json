@@ -1,0 +1,55 @@
+{
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+    "data": {
+      "name": "table"
+    },
+    "width": "container",
+    "height": 320,
+    "autosize": {
+      "type": "fit",
+      "contains": "padding"
+    },
+    "mark": {
+      "type": "rect",
+      "tooltip": true
+    },
+    "encoding": {
+      "x": {
+        "field": "hour",
+        "type": "nominal",
+        "title": "hour",
+        "axis": {
+          "labelAngle": 0
+        }
+      },
+      "y": {
+        "field": "weekday",
+        "type": "nominal",
+        "title": "weekday"
+      },
+      "color": {
+        "field": "orders",
+        "type": "quantitative",
+        "title": "orders"
+      }
+    }
+  },
+  "data": [
+    {
+      "weekday": "Mon",
+      "hour": "9",
+      "orders": 3
+    },
+    {
+      "weekday": "Mon",
+      "hour": "10",
+      "orders": 5
+    },
+    {
+      "weekday": "Tue",
+      "hour": "9",
+      "orders": 2
+    }
+  ]
+}

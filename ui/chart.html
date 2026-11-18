@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BI Chart</title>
+  </head>
+  <body>
+    <header>
+      <div>
+        <div class="summary" id="summary">Waiting for the query result…</div>
+        <div class="meta" id="meta"></div>
+      </div>
+      <div class="toolbar" role="toolbar" aria-label="View">
+        <button type="button" id="show-chart" aria-pressed="true">Chart</button>
+        <button type="button" id="show-table" aria-pressed="false">Table</button>
+        <button type="button" id="fullscreen" hidden>Expand</button>
+      </div>
+    </header>
+    <main>
+      <div id="chart" role="img" aria-label="Chart"></div>
+      <div id="table" hidden></div>
+      <p class="error" id="error" hidden></p>
+      <ul class="notes" id="notes" hidden></ul>
+      <details>
+        <summary>SQL</summary>
+        <pre id="sql"></pre>
+      </details>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

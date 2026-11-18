@@ -1,0 +1,44 @@
+{
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+    "data": {
+      "name": "table"
+    },
+    "width": "container",
+    "height": 320,
+    "autosize": {
+      "type": "fit",
+      "contains": "padding"
+    },
+    "mark": {
+      "type": "bar",
+      "tooltip": true
+    },
+    "encoding": {
+      "x": {
+        "field": "status",
+        "type": "nominal",
+        "title": "status",
+        "axis": {
+          "labelAngle": 0
+        },
+        "sort": "-y"
+      },
+      "y": {
+        "field": "n",
+        "type": "quantitative",
+        "title": "n"
+      }
+    }
+  },
+  "data": [
+    {
+      "status": "paid",
+      "n": 30
+    },
+    {
+      "status": "refunded",
+      "n": 10
+    }
+  ]
+}

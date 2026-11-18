@@ -1,0 +1,27 @@
+# Zero-setup demo: query the generated Parquet files with DuckDB.
+# First run: uv run python examples/generate_demo_data.py
+# Relative paths resolve against this file's directory.
+
+sources:
+  - type: duckdb
+    name: shop
+    description: Demo online shop (2025-01 to 2026-10). Revenue = quantity * unit_price * (1 - discount) on paid orders.
+    tables:
+      - name: customers
+        path: demo_data/customers.parquet
+        description: One row per customer (region, segment, signup_date)
+      - name: products
+        path: demo_data/products.parquet
+        description: Product catalogue (category, unit_price)
+      - name: orders
+        path: demo_data/orders.parquet
+        description: One row per order; status is paid, refunded or cancelled
+      - name: order_items
+        path: demo_data/order_items.parquet
+        description: Order lines (quantity, unit_price, discount)
+
+limits:
+  row_cap: 5000
+  preview_rows: 50
+  chart_rows: 500
+  statement_timeout_ms: 15000

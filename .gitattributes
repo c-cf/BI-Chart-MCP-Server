@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Built by `cd ui && npm run build`; CI checks it is up to date.
+src/bi_chart_mcp/ui/chart.html linguist-generated=true -diff

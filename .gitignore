@@ -172,3 +172,13 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# --- bi-chart-mcp ---
+node_modules/
+ui/dist/
+*.duckdb
+*.duckdb.wal
+examples/demo_data/
+bi-chart-mcp.yml
+.claude/
+ui/dev/samples/

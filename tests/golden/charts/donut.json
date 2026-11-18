@@ -1,0 +1,46 @@
+{
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+    "data": {
+      "name": "table"
+    },
+    "width": "container",
+    "height": 320,
+    "autosize": {
+      "type": "fit",
+      "contains": "padding"
+    },
+    "mark": {
+      "type": "arc",
+      "tooltip": true,
+      "innerRadius": 70
+    },
+    "encoding": {
+      "theta": {
+        "field": "n",
+        "type": "quantitative",
+        "title": "n",
+        "aggregate": "sum",
+        "stack": true
+      },
+      "color": {
+        "field": "status",
+        "type": "nominal",
+        "title": "status"
+      }
+    },
+    "view": {
+      "stroke": null
+    }
+  },
+  "data": [
+    {
+      "status": "paid",
+      "n": 30
+    },
+    {
+      "status": "refunded",
+      "n": 10
+    }
+  ]
+}
