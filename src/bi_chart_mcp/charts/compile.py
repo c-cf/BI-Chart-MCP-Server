@@ -134,7 +134,9 @@ def _bar(intent: ChartIntent, fields: Mapping[str, FieldProfile]) -> Spec:
         encoding[f"{category_channel}Offset"] = {"field": intent.color, "type": "nominal"}
     spec: Spec = {"mark": _tooltip_mark("bar"), "encoding": encoding}
     if horizontal:
+        # One band per category; only the width fits the container.
         spec["height"] = {"step": _BAR_STEP}
+        spec["autosize"] = {"type": "fit-x", "contains": "padding"}
     return spec
 
 

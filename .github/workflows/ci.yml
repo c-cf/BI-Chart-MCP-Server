@@ -39,3 +39,22 @@ jobs:
       - run: uv sync --locked
       # testcontainers starts a throwaway PostgreSQL via the runner's Docker daemon.
       - run: uv run pytest -m integration
+
+  ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - run: npm ci
+      # Golden specs from the Python compiler must compile cleanly with vega-lite.
+      - run: npm test
+      - run: npm run build
+      - name: Built view is committed and up to date
+        run: git diff --exit-code -- ../src/bi_chart_mcp/ui/chart.html

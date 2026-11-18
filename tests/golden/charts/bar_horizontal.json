@@ -9,7 +9,7 @@
       "step": 22
     },
     "autosize": {
-      "type": "fit",
+      "type": "fit-x",
       "contains": "padding"
     },
     "mark": {
