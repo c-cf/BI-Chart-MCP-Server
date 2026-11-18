@@ -22,7 +22,6 @@ dependencies = [
     "duckdb>=2.0,<3",
     "sqlglot>=30,<31",
     "pydantic>=2.9,<3",
-    "pydantic-settings>=2.6,<3",
     "pyyaml>=6.0,<7",
     "anyio>=4.6,<5",
 ]
