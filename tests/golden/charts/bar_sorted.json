@@ -19,6 +19,9 @@
         "field": "status",
         "type": "nominal",
         "title": "status",
+        "axis": {
+          "labelAngle": 0
+        },
         "sort": "-y"
       },
       "y": {

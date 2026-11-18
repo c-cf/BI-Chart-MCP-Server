@@ -96,3 +96,17 @@ describe("payload contract", () => {
     expect(spec.data).toEqual({ name: "table" });
   });
 });
+
+describe("table cells", async () => {
+  const { formatCell } = await import("../src/render");
+  it("shortens midnight timestamps for temporal columns only", () => {
+    expect(formatCell("2025-01-01T00:00:00", "temporal")).toBe("2025-01-01");
+    expect(formatCell("2025-01-01T00:00:00+00:00", "temporal")).toBe("2025-01-01");
+    expect(formatCell("2025-01-01T09:30:00", "temporal")).toBe("2025-01-01T09:30:00");
+    expect(formatCell("2025-01-01T00:00:00", "text")).toBe("2025-01-01T00:00:00");
+  });
+  it("formats numbers and nulls", () => {
+    expect(formatCell(null, "number")).toBe("");
+    expect(formatCell({ a: 1 }, "other")).toBe('{"a":1}');
+  });
+});

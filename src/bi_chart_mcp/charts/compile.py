@@ -28,6 +28,9 @@ _KPI_HEIGHT: Final = 120
 _BAR_STEP: Final = 22
 _LINE_POINTS_MAX: Final = 40
 _COUNT_AGGREGATES: Final = frozenset({"count", "distinct"})
+# Horizontal category labels while they fit; slanted once there are many or long ones.
+_FLAT_LABELS_MAX_CATEGORIES: Final = 12
+_FLAT_LABELS_MAX_CHARS: Final = 10
 
 Spec = dict[str, Any]
 
@@ -77,6 +80,17 @@ def _field(
     return channel
 
 
+def _category_axis(profile: FieldProfile) -> dict[str, Any]:
+    """Axis settings for a discrete x axis (vega-lite would otherwise rotate labels 90°)."""
+    if profile.kind == "temporal" or not profile.categorical:
+        return {}
+    fits = (
+        profile.distinct <= _FLAT_LABELS_MAX_CATEGORIES
+        and profile.max_label_chars <= _FLAT_LABELS_MAX_CHARS
+    )
+    return {"axis": {"labelAngle": 0 if fits else -40}}
+
+
 def _value(intent: ChartIntent, fields: Mapping[str, FieldProfile]) -> dict[str, Any]:
     """The measured channel: y with its aggregate, or a row count when there is no y."""
     if intent.y is None:
@@ -121,6 +135,8 @@ def _bar(intent: ChartIntent, fields: Mapping[str, FieldProfile]) -> Spec:
         category["bin"] = True  # histogram
     horizontal = bool(intent.horizontal)
     category_channel, value_channel = ("y", "x") if horizontal else ("x", "y")
+    if not horizontal:
+        category.update(_category_axis(fields[x]))
     sort = _sort(intent, value_channel)
     if sort is not _NO_SORT:
         category["sort"] = sort
@@ -203,7 +219,7 @@ def _rect(intent: ChartIntent, fields: Mapping[str, FieldProfile]) -> Spec:
     else:
         color = _value(intent.model_copy(update={"y": intent.color}), fields)
     encoding = {
-        "x": _field(x, fields, time_unit=intent.time_unit),
+        "x": {**_field(x, fields, time_unit=intent.time_unit), **_category_axis(fields[x])},
         "y": _field(y, fields),
         "color": color,
     }

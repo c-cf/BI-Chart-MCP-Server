@@ -5,6 +5,7 @@
   "description": "MCP Apps view that renders bi-chart-mcp charts (built into one HTML file).",
   "type": "module",
   "scripts": {
+    "dev": "vite --port 5199 --strictPort",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

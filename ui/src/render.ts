@@ -1,6 +1,13 @@
 import embed, { type Result, type VisualizationSpec } from "vega-embed";
 
-import { type ChartPayload, type JsonValue, type Row, embeddableSpec, toRows } from "./payload";
+import {
+  type ChartPayload,
+  type ColumnKind,
+  type JsonValue,
+  type Row,
+  embeddableSpec,
+  toRows,
+} from "./payload";
 
 export type Theme = "light" | "dark";
 
@@ -20,7 +27,9 @@ export async function renderChart(
   theme: Theme,
 ): Promise<Result> {
   const rows = toRows(payload.columns, payload.data);
-  const spec = embeddableSpec(payload.spec, rows) as VisualizationSpec;
+  // The view's header already shows the title; drawing it again inside the chart repeats it.
+  const { title: _title, ...untitled } = payload.spec;
+  const spec = embeddableSpec(untitled, rows) as VisualizationSpec;
   return embed(container, spec, {
     ast: true, // CSP-safe expression interpreter: the iframe forbids eval
     // vega-embed's loader option takes a Loader; ours rejects every request.
@@ -32,10 +41,15 @@ export async function renderChart(
   });
 }
 
-function formatCell(value: JsonValue): string {
+const MIDNIGHT = /^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.0+)?(?:Z|[+-]00:00)?$/;
+
+export function formatCell(value: JsonValue, kind: ColumnKind): string {
   if (value === null) return "";
-  if (typeof value === "number") return value.toLocaleString();
-  if (typeof value === "string") return value;
+  if (typeof value === "number") return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (typeof value === "string") {
+    // Dates truncated to a day arrive as midnight timestamps; show just the date.
+    return kind === "temporal" ? value.replace(MIDNIGHT, "$1") : value;
+  }
   return JSON.stringify(value);
 }
 
@@ -55,7 +69,7 @@ export function renderTable(container: HTMLElement, payload: ChartPayload): void
     const tr = body.insertRow();
     for (const column of payload.columns) {
       const td = tr.insertCell();
-      td.textContent = formatCell(row[column.name] ?? null); // textContent: never HTML
+      td.textContent = formatCell(row[column.name] ?? null, column.kind); // never HTML
       if (column.kind === "number") td.className = "num";
     }
   }

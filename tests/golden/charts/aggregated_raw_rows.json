@@ -19,6 +19,9 @@
         "field": "region",
         "type": "nominal",
         "title": "region",
+        "axis": {
+          "labelAngle": 0
+        },
         "sort": "ascending"
       },
       "y": {

@@ -181,3 +181,4 @@ ui/dist/
 examples/demo_data/
 bi-chart-mcp.yml
 .claude/
+ui/dev/samples/

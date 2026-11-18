@@ -18,7 +18,10 @@
       "x": {
         "field": "hour",
         "type": "nominal",
-        "title": "hour"
+        "title": "hour",
+        "axis": {
+          "labelAngle": 0
+        }
       },
       "y": {
         "field": "weekday",

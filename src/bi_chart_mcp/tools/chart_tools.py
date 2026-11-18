@@ -97,6 +97,9 @@ def describe_chart(intent: ChartIntent) -> str:
     measure = measure or "count"
     if intent.mark == "text":
         return f"{kind}: {measure}"
+    if intent.mark == "rect":
+        intensity = f"{intent.aggregate}({intent.color})" if intent.aggregate else intent.color
+        return f"{kind}: {intensity or 'count'} by {intent.x} and {intent.y}"
     text = f"{kind}: {measure} by {intent.x}"
     return f"{text}, split by {intent.color}" if intent.color else text
 
