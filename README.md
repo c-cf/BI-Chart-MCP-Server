@@ -67,7 +67,7 @@ See [docs/configuration.md](docs/configuration.md) for every option.
 | Tool | What it does |
 |---|---|
 | `search_catalog` | Without arguments: every source, its SQL dialect and its tables. With words: matching tables and columns, ranked. |
-| `describe_table` | Columns, types, descriptions, foreign keys, and optionally the most frequent values of chosen columns. |
+| `describe_table` | Columns, types, descriptions, foreign keys, likely joins guessed from column names (`customer_id` -> `customers.id`), and optionally the most frequent values of chosen columns. |
 | `query` | Runs one read-only query. Returns a preview, column types, a truncation flag and a handle. |
 | `visualize` | Draws an interactive chart from a handle or from SQL. The chart type is chosen automatically unless the model specifies it. |
 

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from bi_chart_mcp.charts.digest import chart_digest, format_value
+from bi_chart_mcp.charts.digest import chart_digest
 from bi_chart_mcp.charts.intent import ChartIntent
+from bi_chart_mcp.query.formatting import format_value
 from bi_chart_mcp.query.values import ColumnKind, JsonValue
 
 CATEGORIES = ["Electronics", "Home", "Office", "Outdoor", "Toys"]

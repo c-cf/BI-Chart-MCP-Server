@@ -50,7 +50,7 @@ async def test_search_catalog_overview(client: Client) -> None:
 
 async def test_search_catalog_matches_columns(client: Client) -> None:
     data = _data(await client.call_tool("search_catalog", {"query": "region"}))
-    assert data["sources"] is None
+    assert "sources" not in data  # nulls are left out of structured output
     (match,) = data["matches"]
     assert match["table"] == "customers"
     assert match["matched_columns"] == ["region"]
@@ -80,7 +80,7 @@ async def test_describe_table_with_samples(client: Client) -> None:
         {"value": "paid", "count": 30},
         {"value": "refunded", "count": 10},
     ]
-    assert columns["amount"]["top_values"] is None
+    assert "top_values" not in columns["amount"]
 
 
 async def test_describe_unknown_table_is_a_tool_error(client: Client) -> None:
@@ -137,3 +137,24 @@ async def test_query_errors_are_actionable_tool_errors(
     result = await client.call_tool("query", args)
     assert result.is_error
     assert code in _text(result)
+
+
+async def test_catalog_text_is_compact_prose_not_json(client: Client) -> None:
+    text = _text(await client.call_tool("search_catalog", {}))
+    assert text.splitlines()[0] == "Source shop (duckdb SQL): Sample shop data"
+    assert "- orders: One row per order" in text
+    assert "null" not in text
+    assert "{" not in text
+
+
+async def test_describe_text_shows_values_and_inferred_joins(client: Client) -> None:
+    result = await client.call_tool(
+        "describe_table", {"source": "shop", "table": "orders", "sample_columns": ["status"]}
+    )
+    text = _text(result)
+    assert '- status VARCHAR; top values: "paid" (30), "refunded" (10)' in text
+    assert "Likely joins (guessed from column names" in text
+    assert "- customer_id -> customers(id)" in text
+    assert _data(result)["inferred_joins"] == [
+        {"columns": ["customer_id"], "references_table": "customers", "references_columns": ["id"]}
+    ]

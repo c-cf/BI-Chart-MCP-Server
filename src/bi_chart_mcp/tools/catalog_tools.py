@@ -2,153 +2,47 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Final
+from typing import Annotated
 
 from mcp.server import MCPServer
-from pydantic import BaseModel, Field, JsonValue
+from mcp.types import CallToolResult, TextContent
+from pydantic import BaseModel, Field
 
-from bi_chart_mcp.catalog.service import SourceSummary, TableMatch, TableProfile
-from bi_chart_mcp.query.values import ColumnKind, column_kind, to_json_value
 from bi_chart_mcp.services import Services
-from bi_chart_mcp.sources.base import TableInfo
+from bi_chart_mcp.tools.catalog_models import (
+    DescribeTableOutput,
+    SearchCatalogOutput,
+    describe_output,
+    source_overview,
+    table_match,
+)
+from bi_chart_mcp.tools.catalog_text import describe_text, search_text
 from bi_chart_mcp.tools.common import READ_ONLY, tool_errors
 
-_OVERVIEW_TABLE_LIMIT: Final = 100
+_HINT_OVERVIEW = "Next: describe_table for columns, then query or visualize."
+_HINT_MATCHES = "Next: describe_table on a match to see its columns."
+_HINT_NO_MATCH = "No match. Call search_catalog without a query for an overview."
 
 
-class TableSummary(BaseModel):
-    name: str = Field(description="Table name to use in SQL (schema-qualified for PostgreSQL).")
-    kind: str
-    description: str | None = None
-    row_estimate: int | None = None
-
-
-class SourceOverview(BaseModel):
-    name: str
-    dialect: str = Field(description="SQL dialect to write for this source.")
-    description: str | None = None
-    table_count: int
-    tables: list[TableSummary]
-    tables_truncated: bool = Field(description="True when only the first tables are listed.")
-
-
-class TableMatchOut(BaseModel):
-    source: str
-    table: str
-    kind: str
-    description: str | None = None
-    matched_columns: list[str]
-
-
-class SearchCatalogOutput(BaseModel):
-    sources: list[SourceOverview] | None = Field(
-        default=None, description="Overview of every source (when no search text was given)."
-    )
-    matches: list[TableMatchOut] | None = Field(
-        default=None, description="Tables matching the search text, best first."
-    )
-    hint: str
-
-
-class ValueCountOut(BaseModel):
-    value: JsonValue
-    count: int
-
-
-class ColumnOut(BaseModel):
-    name: str
-    db_type: str
-    kind: ColumnKind
-    nullable: bool
-    description: str | None = None
-    top_values: list[ValueCountOut] | None = Field(
-        default=None, description="Most frequent values; only for columns in sample_columns."
+def _result(text: str, output: BaseModel) -> CallToolResult:
+    """Compact text for the model; structured data without nulls for hosts and the UI."""
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structured_content=output.model_dump(mode="json", exclude_none=True),
     )
 
 
-class ForeignKeyOut(BaseModel):
-    columns: list[str]
-    references_table: str
-    references_columns: list[str]
-
-
-class DescribeTableOutput(BaseModel):
-    source: str
-    table: str
-    kind: str
-    description: str | None = None
-    row_estimate: int | None = None
-    columns: list[ColumnOut]
-    foreign_keys: list[ForeignKeyOut]
-
-
-def _table_summary(table: TableInfo) -> TableSummary:
-    return TableSummary(
-        name=table.qualified_name,
-        kind=table.kind,
-        description=table.description,
-        row_estimate=table.row_estimate,
-    )
-
-
-def _overview(summary: SourceSummary) -> SourceOverview:
-    tables = summary.tables[:_OVERVIEW_TABLE_LIMIT]
-    return SourceOverview(
-        name=summary.name,
-        dialect=summary.dialect,
-        description=summary.description,
-        table_count=len(summary.tables),
-        tables=[_table_summary(t) for t in tables],
-        tables_truncated=len(summary.tables) > len(tables),
-    )
-
-
-def _match(match: TableMatch) -> TableMatchOut:
-    return TableMatchOut(
-        source=match.source,
-        table=match.table.qualified_name,
-        kind=match.table.kind,
-        description=match.table.description,
-        matched_columns=list(match.matched_columns),
-    )
-
-
-def _describe_output(profile: TableProfile, max_chars: int) -> DescribeTableOutput:
-    detail = profile.detail
-    columns = [
-        ColumnOut(
-            name=c.name,
-            db_type=c.db_type,
-            kind=column_kind(c.db_type),
-            nullable=c.nullable,
-            description=c.description,
-            top_values=(
-                [
-                    ValueCountOut(value=to_json_value(v.value, max_chars), count=v.count)
-                    for v in profile.top_values[c.name]
-                ]
-                if c.name in profile.top_values
-                else None
-            ),
+async def search_catalog_output(
+    services: Services, query: str | None, source: str | None
+) -> SearchCatalogOutput:
+    if query and query.strip():
+        matches = await services.catalog.search(query, source)
+        return SearchCatalogOutput(
+            matches=[table_match(m) for m in matches],
+            hint=_HINT_MATCHES if matches else _HINT_NO_MATCH,
         )
-        for c in detail.columns
-    ]
-    return DescribeTableOutput(
-        source=profile.source,
-        table=detail.table.qualified_name,
-        kind=detail.table.kind,
-        description=detail.table.description,
-        row_estimate=detail.table.row_estimate,
-        columns=columns,
-        foreign_keys=[
-            ForeignKeyOut(
-                columns=list(fk.columns),
-                references_table=fk.references_table,
-                references_columns=list(fk.references_columns),
-            )
-            for fk in detail.foreign_keys
-        ],
-    )
+    overview = await services.catalog.overview(source)
+    return SearchCatalogOutput(sources=[source_overview(s) for s in overview], hint=_HINT_OVERVIEW)
 
 
 def register_catalog_tools(server: MCPServer, services: Services) -> None:
@@ -159,7 +53,7 @@ def register_catalog_tools(server: MCPServer, services: Services) -> None:
             Field(description="Words to look for in table names, descriptions and column names."),
         ] = None,
         source: Annotated[str | None, Field(description="Limit to one source.")] = None,
-    ) -> SearchCatalogOutput:
+    ) -> Annotated[CallToolResult, SearchCatalogOutput]:
         """Find the tables you can query.
 
         Without `query`: an overview of every source (its SQL dialect and tables).
@@ -167,21 +61,8 @@ def register_catalog_tools(server: MCPServer, services: Services) -> None:
         Call this before writing SQL, then use describe_table for column details.
         """
         with tool_errors():
-            if query and query.strip():
-                matches = await services.catalog.search(query, source)
-                return SearchCatalogOutput(
-                    matches=[_match(m) for m in matches],
-                    hint=(
-                        "Use describe_table on a match to see its columns."
-                        if matches
-                        else "No match. Call search_catalog without a query for an overview."
-                    ),
-                )
-            overview = await services.catalog.overview(source)
-            return SearchCatalogOutput(
-                sources=[_overview(s) for s in overview],
-                hint="Use describe_table for columns, then query or visualize.",
-            )
+            output = await search_catalog_output(services, query, source)
+        return _result(search_text(output), output)
 
     @server.tool(annotations=READ_ONLY)
     async def describe_table(
@@ -197,11 +78,13 @@ def register_catalog_tools(server: MCPServer, services: Services) -> None:
                 max_length=10,
             ),
         ] = None,
-    ) -> DescribeTableOutput:
-        """Columns, types, descriptions and foreign keys of one table.
+    ) -> Annotated[CallToolResult, DescribeTableOutput]:
+        """Columns, types, descriptions and joins of one table.
 
-        Optionally the most frequent values of selected columns.
+        Shows declared foreign keys and joins guessed from column names. Optionally the
+        most frequent values of selected columns.
         """
         with tool_errors():
             profile = await services.catalog.describe(source, table, sample_columns or ())
-            return _describe_output(profile, services.limits.max_cell_chars)
+        output = describe_output(profile, services.limits.max_cell_chars)
+        return _result(describe_text(output), output)

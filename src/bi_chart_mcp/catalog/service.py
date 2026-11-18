@@ -11,7 +11,8 @@ from typing import Final
 
 import anyio
 
-from bi_chart_mcp.sources.base import Source, TableDetail, TableInfo, ValueCount
+from bi_chart_mcp.catalog.joins import infer_joins
+from bi_chart_mcp.sources.base import ForeignKey, Source, TableDetail, TableInfo, ValueCount
 from bi_chart_mcp.sources.registry import SourceRegistry
 
 _TABLE_CACHE_TTL_S: Final = 60.0
@@ -41,6 +42,7 @@ class TableProfile:
     source: str
     detail: TableDetail
     top_values: dict[str, tuple[ValueCount, ...]]
+    inferred_joins: tuple[ForeignKey, ...] = ()  # from column names; see catalog.joins
 
 
 def search_terms(text: str) -> tuple[str, ...]:
@@ -111,7 +113,10 @@ class CatalogService:
             samples[column] = await anyio.to_thread.run_sync(
                 src.top_values, detail.table.qualified_name, column, top_n
             )
-        return TableProfile(source=src.name, detail=detail, top_values=samples)
+        inferred = infer_joins(detail, await self._list_tables(src))
+        return TableProfile(
+            source=src.name, detail=detail, top_values=samples, inferred_joins=inferred
+        )
 
     def _selected(self, source: str | None) -> tuple[Source, ...]:
         return (self._registry.get(source),) if source else tuple(self._registry)

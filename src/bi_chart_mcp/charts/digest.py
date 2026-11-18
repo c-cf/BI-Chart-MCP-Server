@@ -8,14 +8,12 @@ the chart aggregates them.
 
 from __future__ import annotations
 
-import math
-import re
 import statistics
 from collections.abc import Callable, Mapping, Sequence
-from decimal import ROUND_HALF_UP, Context, Decimal
 from typing import Final
 
 from bi_chart_mcp.charts.intent import Aggregate, ChartIntent
+from bi_chart_mcp.query.formatting import format_value
 from bi_chart_mcp.query.table_text import markdown_table
 from bi_chart_mcp.query.values import ColumnKind, JsonValue
 
@@ -24,45 +22,11 @@ _MAX_SERIES: Final = 8
 _MAX_CROSS_COLUMNS: Final = 12
 _TOP: Final = 15
 _ADDITIVE: Final = frozenset({None, "sum", "count"})
-_MIDNIGHT = re.compile(r"^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.0+)?(?:Z|[+-]00:00)?$")
-_SIGNIFICANT = Context(prec=4, rounding=ROUND_HALF_UP)
 
 Data = Mapping[str, Sequence[JsonValue]]
 Kinds = Mapping[str, ColumnKind]
 Number = int | float
 Key = tuple[str, str]
-
-
-# ---------------------------------------------------------------- formatting
-
-
-def format_value(value: JsonValue) -> str:
-    """Human-scale formatting: thousands separators, few decimals, dates without midnight."""
-    if value is None:
-        return ""
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int):
-        return f"{value:,}"
-    if isinstance(value, float):
-        return _format_float(value)
-    if isinstance(value, str):
-        return _MIDNIGHT.sub(r"\1", value)
-    return str(value)
-
-
-def _format_float(value: float) -> str:
-    if not math.isfinite(value):
-        return ""
-    exact = Decimal(repr(value))
-    if abs(value) >= 1000:
-        return f"{exact.quantize(Decimal(1), rounding=ROUND_HALF_UP):,}"
-    if abs(value) >= 1 or value == 0:
-        rounded = exact.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    else:
-        rounded = _SIGNIFICANT.create_decimal(exact)
-    text = format(rounded, "f")
-    return text.rstrip("0").rstrip(".") if "." in text else text
 
 
 # ---------------------------------------------------------------- aggregation
