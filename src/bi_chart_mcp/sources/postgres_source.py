@@ -46,7 +46,10 @@ from bi_chart_mcp.sources.base import (
 _log = get_logger("sources.postgres")
 
 _LOCK_TIMEOUT: Final = "2s"
-_POOL_TIMEOUT_S: Final = 10.0
+# Per-address connect timeout, kept well below the pool timeout so libpq can still fall
+# back to the next address (e.g. "localhost" -> ::1 times out, then 127.0.0.1 works).
+_CONNECT_TIMEOUT_S: Final = 5
+_POOL_TIMEOUT_S: Final = 20.0
 _KINDS: Final[dict[str, TableKind]] = {
     "r": "table",
     "p": "table",
@@ -160,7 +163,7 @@ class PostgresSource:
             check=ConnectionPool.check_connection,
             name=f"bi-chart-{config.name}",
             timeout=_POOL_TIMEOUT_S,
-            kwargs={"application_name": "bi-chart-mcp", "connect_timeout": 10},
+            kwargs={"application_name": "bi-chart-mcp", "connect_timeout": _CONNECT_TIMEOUT_S},
         )
         self._pool.open(wait=False)
 

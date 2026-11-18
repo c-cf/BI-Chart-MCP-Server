@@ -1,0 +1,28 @@
+# Demo PostgreSQL with the shop dataset and a read-only role.
+#
+#   uv run python examples/generate_demo_data.py
+#   docker compose -f examples/docker-compose.yml up -d
+#
+# Connect bi-chart-mcp with:
+#   SHOP_DSN=postgresql://bi_reader:bi_reader_demo@127.0.0.1:55432/shop
+name: bi-chart-demo
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: shop
+      POSTGRES_USER: shop_admin
+      POSTGRES_PASSWORD: shop_admin_demo  # demo only
+      BI_READER_PASSWORD: bi_reader_demo  # demo only
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./demo_data:/demo:ro
+      - ../scripts:/scripts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop_admin -d shop"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

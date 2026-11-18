@@ -1,0 +1,30 @@
+# Full example: a PostgreSQL warehouse plus local files through DuckDB.
+# Copy to bi-chart-mcp.yml (git-ignored) and adjust. Every key is documented in
+# docs/configuration.md.
+
+sources:
+  # PostgreSQL: connect as a dedicated read-only role (scripts/create_readonly_role.sql).
+  # The DSN is read from the environment variable named here, never from this file.
+  - type: postgres
+    name: warehouse
+    description: Demo shop in PostgreSQL (docker compose -f examples/docker-compose.yml up -d)
+    dsn_env: SHOP_DSN # e.g. postgresql://bi_reader:bi_reader_demo@127.0.0.1:55432/shop
+    schemas: [sales] # only these schemas are visible and queryable
+    statement_timeout_ms: 15000
+    pool_max_size: 4
+
+  # DuckDB: each file becomes a read-only view; nothing else on disk is reachable.
+  - type: duckdb
+    name: files
+    description: Spreadsheets exported by finance
+    tables:
+      - name: targets
+        path: data/targets.csv # csv, tsv, parquet or json
+        description: Monthly revenue targets by region
+
+limits:
+  row_cap: 5000 # rows fetched per query; one more is fetched to detect truncation
+  preview_rows: 50 # rows shown to the model in tool results
+  chart_rows: 500 # rows sent to the chart view
+  max_cell_chars: 500 # longer text values are cut
+  statement_timeout_ms: 15000 # default for sources without their own timeout
