@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Sequence
 from typing import Final, cast
 
 import duckdb
@@ -30,6 +31,7 @@ from bi_chart_mcp.sources._common import (
 from bi_chart_mcp.sources.base import (
     Column,
     ColumnInfo,
+    ColumnMatch,
     ResultSet,
     TableDetail,
     TableInfo,
@@ -142,6 +144,17 @@ class DuckDBSource:
         )
         rows = self._internal(sql)
         return tuple(ValueCount(value=r[0], count=int(cast(int, r[1]))) for r in rows)
+
+    def find_columns(self, terms: Sequence[str], limit: int) -> tuple[ColumnMatch, ...]:
+        lowered = [t.lower() for t in terms if t]
+        matches: list[ColumnMatch] = []
+        for name in self._tables:
+            for column in self.describe_table(name).columns:
+                if any(t in column.name.lower() for t in lowered):
+                    matches.append(
+                        ColumnMatch(table=name, column=column.name, db_type=column.db_type)
+                    )
+        return tuple(matches[:limit])
 
     def close(self) -> None:
         with self._lock:

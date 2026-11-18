@@ -179,3 +179,11 @@ def test_database_layer_blocks_writes_and_privileged_access(source: PostgresSour
     assert leaked == []
     # Nothing was modified.
     assert source.execute(_raw("SELECT count(*) FROM orders")).rows == ((40,),)
+
+
+def test_find_columns_escapes_like_wildcards(source: PostgresSource) -> None:
+    found = {(m.table, m.column) for m in source.find_columns(["amount", "REGI"], 20)}
+    assert found == {("sales.orders", "amount"), ("sales.customers", "region")}
+    underscored = {m.column for m in source.find_columns(["_"], 50)}
+    assert underscored == {"customer_id", "created_at"}  # literal underscore, not "any char"
+    assert source.find_columns([], 10) == ()

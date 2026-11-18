@@ -34,6 +34,7 @@ from bi_chart_mcp.sources._common import (
 from bi_chart_mcp.sources.base import (
     Column,
     ColumnInfo,
+    ColumnMatch,
     ForeignKey,
     ResultSet,
     TableDetail,
@@ -100,9 +101,27 @@ WHERE c.conrelid = %(oid)s AND c.contype = 'f'
 ORDER BY c.conname
 """
 
+_FIND_COLUMNS: Final = """
+SELECT n.nspname, c.relname, a.attname, format_type(a.atttypid, a.atttypmod)
+FROM pg_catalog.pg_attribute a
+JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = ANY(%(schemas)s)
+  AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+  AND a.attnum > 0 AND NOT a.attisdropped
+  AND has_table_privilege(c.oid, 'SELECT')
+  AND a.attname ILIKE ANY(%(patterns)s)
+ORDER BY array_position(%(schemas)s, n.nspname::text), c.relname, a.attnum
+LIMIT %(limit)s
+"""
+
 _TYPE_NAMES: Final = (
     "SELECT oid, format_type(oid, NULL) FROM pg_catalog.pg_type WHERE oid = ANY(%s)"
 )
+
+
+def _escape_like(term: str) -> str:
+    return term.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
 
 
 def _configure(conn: psycopg.Connection[Any]) -> None:
@@ -221,6 +240,18 @@ class PostgresSource:
             limit=sql.Literal(int(limit)),
         )
         return tuple(ValueCount(value=r[0], count=int(r[1])) for r in self._internal(statement))
+
+    def find_columns(self, terms: Sequence[str], limit: int) -> tuple[ColumnMatch, ...]:
+        patterns = [f"%{_escape_like(t)}%" for t in terms if t]
+        if not patterns:
+            return ()
+        rows = self._internal(
+            _FIND_COLUMNS,
+            {"schemas": list(self._config.schemas), "patterns": patterns, "limit": int(limit)},
+        )
+        return tuple(
+            ColumnMatch(table=f"{r[0]}.{r[1]}", column=str(r[2]), db_type=str(r[3])) for r in rows
+        )
 
     def close(self) -> None:
         self._pool.close()

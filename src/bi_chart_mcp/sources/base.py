@@ -6,6 +6,7 @@ method returns immutable values.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -64,6 +65,13 @@ class TableDetail:
 
 
 @dataclass(frozen=True, slots=True)
+class ColumnMatch:
+    table: str  # qualified name as shown by TableInfo.qualified_name
+    column: str
+    db_type: str
+
+
+@dataclass(frozen=True, slots=True)
 class ValueCount:
     value: object
     count: int
@@ -97,5 +105,9 @@ class Source(Protocol):
         ...
 
     def top_values(self, table: str, column: str, limit: int) -> tuple[ValueCount, ...]: ...
+
+    def find_columns(self, terms: Sequence[str], limit: int) -> tuple[ColumnMatch, ...]:
+        """Columns whose name contains any of `terms` (case-insensitive)."""
+        ...
 
     def close(self) -> None: ...
