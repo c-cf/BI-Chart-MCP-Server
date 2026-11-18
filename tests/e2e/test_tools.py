@@ -25,7 +25,7 @@ def _data(result: CallToolResult) -> dict[str, Any]:
 
 async def test_tools_are_listed_read_only_with_output_schemas(client: Client) -> None:
     tools = {t.name: t for t in (await client.list_tools()).tools}
-    assert set(tools) == {"search_catalog", "describe_table", "query"}
+    assert set(tools) == {"search_catalog", "describe_table", "query", "visualize"}
     for tool in tools.values():
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
